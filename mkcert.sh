@@ -68,10 +68,10 @@ echo ${prefix}-csr.pem
 if [ "$prefix" == "master" ]
 then
     echo -n "Self-signing CA cert with master-pvt-key.pem ..."
-    openssl x509 -req -in  ${prefix}-csr.pem -signkey master-pvt-key.pem -out ${prefix}-cert.pem > /dev/null 2>&1
+    openssl x509 -req -in  ${prefix}-csr.pem -signkey master-pvt-key.pem -days 365 -out ${prefix}-cert.pem > /dev/null 2>&1
 else
     echo -n "Signing CSR with CA cert... "
-    openssl x509 -req -in  ${prefix}-csr.pem -CA master-cert.pem -CAkey master-pvt-key.pem -set_serial "0x${id:0:8}" -out ${prefix}-cert.pem 
+    openssl x509 -req -in  ${prefix}-csr.pem -CA master-cert.pem -CAkey master-pvt-key.pem -set_serial "0x${id:0:8}" -days 365 -out ${prefix}-cert.pem 
 fi
 
 echo -n "Exporting cert ..."

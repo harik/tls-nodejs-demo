@@ -2,36 +2,36 @@
 
 var tls = require('tls');
 var fs = require('fs');
+var net = require('net');
 
-const PORT = 1338;
+const USE_SSL = true;
+const PORT = 1337;
 const HOST = '127.0.0.1'
 
-var args = {
-    //key: 'device-eec9fc85-pvt-key.pem',
-    //cert: 'device-eec9fc85-cert.pem',
-    pfx: 'device-eec9fc85.pfx',
-    ca: 'master-cert.pem'
-};
+var pfx = process.argv.pop();
+if (USE_SSL && !pfx.match(/[.]pfx$/)) {
+    console.error("Usage: node device.js <device.pfx>");
+    process.exit(2);
+}
+
 var options = {
-    //key: fs.readFileSync(args.key),
-    //cert: fs.readFileSync(args.cert),
-    pfx: fs.readFileSync(args.pfx),
-    //ca: [fs.readFileSync(args.ca)],
+    pfx: fs.readFileSync(pfx),
     checkServerIdentity: function (servername, cert) {
-        //console.log(sname, cert);
-        // Need to check servername here, but since it will be 127.0.0.1 
+        //console.log(servername, cert);
+        // Need to check servername matches with CN in cert, but since it will be 127.0.0.1 
         // we have nothing to do
         return null;
     },
     rejectUnauthorized: false   // <-- demo only
 };
 
-var client = tls.connect(PORT, HOST, options, function() {
-
-    // Check if the authorization worked
-    var cert = client.getPeerCertificate(true);
-    console.log("Connected to ", cert.subject.CN, client.authorized?'✓ authorized':`!!UNAUTHORIZED!! ${client.authorizationError}`);
-
+var client = (USE_SSL?tls:net).connect(PORT, HOST, options, function() {
+    if (USE_SSL) {
+        // Check if the authorization worked
+        var cert = client.getPeerCertificate(true);
+        console.log("Connected to ", cert.subject.CN, client.authorized?'✓ authorized':`!!UNAUTHORIZED!! ${client.authorizationError}`);
+    } else
+        console.log("Connected (unsecured)");
     // Send a friendly message
     client.write("hello");
 
@@ -39,27 +39,20 @@ var client = tls.connect(PORT, HOST, options, function() {
 
 client.on("data", function(data) {
 
-    console.log('Received: %s [it is %d bytes long]',
-        data.toString().replace(/(\n)/gm,""),
-        data.length);
+    console.log('Received [%d bytes]: %s',
+        data.length,
+        data.toString().replace(/(\n)/gm,""));
 
     // Close the connection after receiving the message
     client.end();
 
 });
 
-client.on('close', function() {
-
-    console.log("Connection closed");
-
-});
+client.on('close', () => console.log("Connection closed"));
 
 // When an error ocoures, show it.
 client.on('error', function(error) {
-
     console.error(error);
-
-    // Close the connection after the error occurred.
     client.destroy();
-
 });
+
